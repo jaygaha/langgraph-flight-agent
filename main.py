@@ -1,15 +1,8 @@
 import logging
-from dotenv import load_dotenv
 from src.graph import app
+from src.config import settings
 
-load_dotenv()
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-)
 logger = logging.getLogger(__name__)
-
 
 def _log_events(stream) -> None:
     """Stream graph events and log each one cleanly."""
@@ -25,7 +18,7 @@ def run_agent_workflow() -> None:
     config = {"configurable": {"thread_id": "session_123"}}
 
     initial_input = {
-        "user_request": "Find a flight from JFK to LAX under $500.",
+        "user_request": "Find a flight from KTM to HND under $500.",
         "flight_options": [],
         "current_status": "Starting",
         "turns": 0,
@@ -34,9 +27,9 @@ def run_agent_workflow() -> None:
     logger.info("Part 1: Initial gathering & search")
     _log_events(app.stream(initial_input, config=config))
 
-    logger.info("Simulating human review: updating destination to LON")
+    logger.info("Simulating human review: updating destination to NRT")
     current_constraints = app.get_state(config).values.get("constraints", {})
-    updated_constraints = {**current_constraints, "destination": "LON"}
+    updated_constraints = {**current_constraints, "destination": "NRT"}
     app.update_state(config, {"constraints": updated_constraints}, as_node="gather_constraints")
     logger.info("State updated: destination=%s", updated_constraints.get("destination"))
 

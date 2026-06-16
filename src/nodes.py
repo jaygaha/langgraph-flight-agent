@@ -14,9 +14,19 @@ from typing import Optional
 from src.state import AgentState
 from src.llm import get_llm
 from langchain_core.messages import SystemMessage, HumanMessage
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
 logger = logging.getLogger(__name__)
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True,
+)
+
+def _invoke_llm(llm, messages):
+    return llm.invoke(messages)
 
 class FlightConstraints(BaseModel):
     origin: Optional[str] = Field(None, description="The departure city or airport code")
@@ -37,7 +47,7 @@ def gather_constraints_node(state: AgentState) -> dict:
         HumanMessage(content=state["user_request"]),
     ]
 
-    extracted_constraints = llm.invoke(messages)
+    extracted_constraints = _invoke_llm(llm, messages)
     current_turns = state.get("turns", 0) + 1
 
     logger.info(
@@ -58,11 +68,10 @@ def gather_constraints_node(state: AgentState) -> dict:
 def fetch_live_flights(origin: str, destination: str, max_budget: float = float("inf")) -> list:
     """Simulated external API client wrapper that filters by budget."""
     mock_database = [
-        {"flight_id": "AA-123", "price": 450, "airline": "American", "from": origin, "to": destination},
-        {"flight_id": "DL-456", "price": 550, "airline": "Delta",    "from": origin, "to": destination},
+        {"flight_id": "JL-123", "price": 450, "airline": "JAL", "from": origin, "to": destination},
+        {"flight_id": "RA-456", "price": 550, "airline": "RNA", "from": origin, "to": destination},
     ]
     return [f for f in mock_database if f["price"] <= max_budget]
-
 
 def search_flights_node(state: AgentState) -> dict:
     constraints = state.get("constraints", {})

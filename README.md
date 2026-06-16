@@ -45,3 +45,13 @@ python main.py
 | `src/nodes.py` | Three node functions and mock flight search |
 | `src/llm.py` | Provider factory — swap at runtime via env var |
 | `main.py` | Three-part workflow: search, human override, book |
+
+## Learning path
+
+Each phase is a separate branch. Check them out to follow the build step by step.
+
+1. **Basic implementation**: state, nodes, graph, human-in-the-loop, LLM factory -> [feat/basic](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/basic)
+2. **Hardening**: config validation at startup, LLM retry with backoff, unit tests -> [feat/hardening](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/hardening)
+3. [TODO] Persistence & API: SqliteSaver for state that survives restarts, FastAPI HTTP interface
+4. [TODO] Deployment: Dockerfile, docker-compose with Ollama, GitHub Actions CI
+5. [TODO] Observability (know what's happening): JSON structured logging, LangSmith tracing.
