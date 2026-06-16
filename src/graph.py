@@ -18,6 +18,7 @@ Architectural Concept: A checkpointer automatically saves a snapshot of the Agen
 Why it matters: It gives our agent persistent memory. If the application crashes mid-search, or if we need to pause
 the agent to wait for human approval before booking, the agent can resume exactly where it left off.
 """
+from src.config import settings
 import logging
 from langgraph.graph import StateGraph, START, END
 from src.state import AgentState
@@ -26,12 +27,11 @@ from langgraph.checkpoint.memory import MemorySaver
 
 logger = logging.getLogger(__name__)
 
-
 def should_continue(state: AgentState) -> str:
     """Router function to decide the next step."""
     turns = state.get("turns", 0)
 
-    if turns >= 3:
+    if turns >= settings.max_turns:
         logger.warning("Turn limit reached | turns=%d ending workflow", turns)
         return "end_due_to_max_turns"
 
