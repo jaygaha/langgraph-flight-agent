@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     max_turns: int = 3
     log_level: str = "INFO"
 
+    # MemorySaver
+    checkpoint_db: str = "checkpoints.db"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")

@@ -20,10 +20,11 @@ the agent to wait for human approval before booking, the agent can resume exactl
 """
 from src.config import settings
 import logging
+import sqlite3
 from langgraph.graph import StateGraph, START, END
 from src.state import AgentState
 from src.nodes import gather_constraints_node, search_flights_node, trigger_booking_node
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,8 @@ workflow.add_edge("gather_constraints", "search_flights")
 workflow.add_edge("trigger_booking", END)
 
 # A. Initialize an in-memory checkpointer
-memory = MemorySaver()
+conn = sqlite3.connect(settings.checkpoint_db, check_same_thread=False)
+memory = SqliteSaver(conn)
 
 # 4. Compile the graph into an executable runnable
 app = workflow.compile(

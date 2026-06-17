@@ -4,3 +4,13 @@
 .remember/
 __pycache__/
 *.pyc
+
+# Ignore SQLite temporary sidecar files
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Ignore the main database file as well
+*.db
+*.sqlite
+*.sqlite3

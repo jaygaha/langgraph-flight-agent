@@ -64,7 +64,6 @@ def gather_constraints_node(state: AgentState) -> dict:
         "turns": current_turns,
     }
 
-
 def fetch_live_flights(origin: str, destination: str, max_budget: float = float("inf")) -> list:
     """Simulated external API client wrapper that filters by budget."""
     mock_database = [
@@ -109,6 +108,7 @@ def trigger_booking_node(state: AgentState) -> dict:
         logger.warning("Booking failed; no affordable flights | max_budget=%s", max_budget)
         return {
             "current_status": "No affordable flights found. Please check constraints.",
+            "booked_flight": None,
         }
 
     best_flight = min(valid_flights, key=lambda f: f["price"])
@@ -123,4 +123,5 @@ def trigger_booking_node(state: AgentState) -> dict:
 
     return {
         "current_status": f"Successfully selected flight {best_flight['flight_id']} for ${best_flight['price']}",
+        "booked_flight": best_flight,
     }

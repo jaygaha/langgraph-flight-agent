@@ -33,3 +33,5 @@ class AgentState(TypedDict):
 
     # Track how many times the graph has looped
     turns: int
+
+    booked_flight: Optional[Dict[str, Any]]
