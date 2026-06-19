@@ -1,0 +1,20 @@
+# Tell Docker what to exclude from the build context. Without this file, Docker
+# copies your entire project directory into the image including .venv (hundreds of MB), .env (contains secrets),
+# *.db (runtime data), and .git (version history). The image becomes bloated and potentially leaks credentials.
+#
+# .dockerignore works exactly like .gitignore — same syntax, same idea.
+#
+#
+.venv/
+.env
+*.db
+*.db-shm
+*.db-wal
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.idea/
+.remember/
+tests/
+README.md
