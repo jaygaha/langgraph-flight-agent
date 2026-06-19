@@ -19,6 +19,9 @@ matching flights, and pauses for human approval before booking.
 
 ```
 flight_search_agent/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          #runs pytest on push and PR
 ├── api/
 │   ├── __init__.py
 │   ├── app.py              #FastAPI entry point
@@ -36,6 +39,9 @@ flight_search_agent/
 │   └── test_nodes.py
 ├── main.py                 #CLI demo
 ├── requirements.txt
+├── Dockerfile
+├── compose.yml
+├── .dockerignore
 ├── .env.example
 └── .gitignore
 ```
@@ -95,20 +101,27 @@ Each phase is a separate branch. Check them out to follow the build step by step
    → [feat/hardening](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/hardening)
 3. **Persistence & API**: SqliteSaver persistence, FastAPI HTTP interface
    → [feat/api](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/api)
-4. **Deployment**: Dockerfile, docker-compose with Ollama, GitHub Actions CI *(todo)*
+4. **Deployment**: Dockerfile, docker-compose with Ollama, GitHub Actions CI -> [feat/deployment](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/deployment)
 5. **Observability**: JSON structured logging, LangSmith tracing *(todo)*
 
 ---
 
 **Phase 1: Basic implementation**
+
 `AgentState` is a TypedDict that moves between nodes as shared memory. Each node reads from it and returns a dict of updates. `should_continue` is a plain function that routes after each search: replan, proceed, or hit the turn limit. `interrupt_before` pauses the graph before booking so a human can review the results. `app.stream(None)` resumes it.
 
 **Phase 2: Hardening**
+
 `Settings` (Pydantic Settings) loads all env vars at import time. If something is missing, it raises a clear error before any node runs. The LLM call in `gather_constraints_node` retries up to 3 times with exponential backoff, so a single timeout doesn't crash the graph. Four unit tests cover the core logic in `search_flights_node` and `trigger_booking_node`.
 
 **Phase 3: Persistence & API**
+
 `MemorySaver` swapped for `SqliteSaver`. Checkpoints write to a `.db` file now, so a server restart doesn't wipe every session mid-booking. The FastAPI layer adds three endpoints: `POST /flights/search` starts a session, `POST /flights/approve/{id}` takes optional constraint overrides and executes the booking, `GET /flights/session/{id}` returns the current state. Pydantic schemas handle request validation and generate the `/docs` page automatically.
 
-**Phase 4: Deployment** *(todo)*
+**Phase 4: Deployment**
+
+`python:3.12-slim` image keeps the build small and avoids musl libc issues that alpine causes with some Python C extensions. The compose file points the agent at host Ollama via `host.docker.internal:11434` — no second Ollama container needed if you already have models installed. The named volume mounts to a directory (`/app/data`), not a file, because Docker creates directories for volume mount points and SQLite needs a file path inside one. GitHub Actions CI runs `pytest tests/ -v` with `LLM_PROVIDER=ollama` set — the unit tests never call the LLM, so no model or key is needed in the runner.
+
+> **Note (dockerized Ollama):** The default `compose.yml` uses your host Ollama via `host.docker.internal`. To run Ollama inside Docker instead, uncomment the `ollama` service in `compose.yml`, remove the `OLLAMA_HOST` line from the `agent` environment block, then pull your model after first startup: `docker compose exec ollama ollama pull llama3.1`
 
 **Phase 5: Observability** *(todo)*
