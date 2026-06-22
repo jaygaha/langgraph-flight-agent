@@ -14,6 +14,8 @@ matching flights, and pauses for human approval before booking.
 - SqliteSaver for state that survives restarts
 - FastAPI endpoints for search, approval, and session inspection
 - Pydantic schemas for request/response validation and auto-generated API docs
+- JSON structured logging (`python-json-logger`) parseable by Datadog, CloudWatch, Loki
+- LangSmith tracing for full node-by-node visibility into every agent run
 
 ## Project structure
 
@@ -102,7 +104,7 @@ Each phase is a separate branch. Check them out to follow the build step by step
 3. **Persistence & API**: SqliteSaver persistence, FastAPI HTTP interface
    → [feat/api](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/api)
 4. **Deployment**: Dockerfile, docker-compose with Ollama, GitHub Actions CI -> [feat/deployment](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/deployment)
-5. **Observability**: JSON structured logging, LangSmith tracing *(todo)*
+5. **Observability**: JSON structured logging, LangSmith tracing -> [feat/observability](https://github.com/jaygaha/langgraph-flight-agent/tree/feat/observability)
 
 ---
 
@@ -124,4 +126,54 @@ Each phase is a separate branch. Check them out to follow the build step by step
 
 > **Note (dockerized Ollama):** The default `compose.yml` uses your host Ollama via `host.docker.internal`. To run Ollama inside Docker instead, uncomment the `ollama` service in `compose.yml`, remove the `OLLAMA_HOST` line from the `agent` environment block, then pull your model after first startup: `docker compose exec ollama ollama pull llama3.1`
 
-**Phase 5: Observability** *(todo)*
+**Phase 5: Observability**
+
+`basicConfig` is replaced with a `JsonFormatter` handler from `python-json-logger`. Every log line is now a JSON object with `asctime`, `levelname`, `name`, and `message` fields that any log aggregator (Datadog, Loki, CloudWatch) can parse directly. LangSmith tracing needs no code changes: set `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in `.env` and every `app.stream()` call sends a trace automatically. One catch for local runs: `load_dotenv()` at the top of `main.py` is needed to push `.env` vars into `os.environ` before LangSmith reads them. In Docker, compose handles this via `env_file`.
+
+> **What LangSmith does?**
+> 
+> It's a tracing tool for LLM applications. Every time your agent runs, LangSmith records the full execution: which nodes fired, what the LLM received as input, what it returned, how many tokens it used, and how long each step took.
+>  
+> Why it matters for this project
+>
+> Without it, when something goes wrong you only have log lines like: `{"message": "Constraints extracted | origin=KTM destination=NRT"}`
+>
+> With LangSmith you get a visual trace showing:
+>  - The exact system prompt and user message sent to the LLM
+>  - The raw LLM response before your code parsed it
+>  - Which node was slow (was it the LLM call or the flight search?)
+>  - Token counts per run — useful for cost estimation with paid providers
+>
+> Concrete example: An agent occasionally returns None for origin. With logs alone you'd grep through output trying to reconstruct what happened. With LangSmith you open the trace, click gather_constraints_node, and see the exact prompt the LLM received and the exact JSON it returned - you know immediately whether it's a prompt problem or a parsing problem.
+>
+> For this learning project specifically — it's the fastest way to understand what LangGraph is actually doing inside each node without adding print statements everywhere.
+> 
+
+## Where to take this next
+
+**Replace the mock flight API**
+
+The mock data in `fetch_live_flights` is the most obvious gap. [Amadeus](https://developers.amadeus.com) and [Duffel](https://duffel.com/docs) both have free sandbox tiers. Swapping in a real API is where things get interesting: rate limits, pagination, inconsistent response shapes — none of that is in the mock.
+  
+**Frontend**
+
+The `/search`, `/approve`, and `/session` endpoints are already there. A React or Next.js UI fits the flow: call `/search`, show results, wait for user input, call `/approve`. The interrupt-and-resume pattern you built was designed for this kind of two-step interaction.
+
+**PostgreSQL**
+
+SQLite works for a single server. For concurrent writes or horizontal scaling, swap `SqliteSaver` for
+  `langgraph-checkpoint-postgres`. The graph code doesn't change, just the checkpointer initialization.
+
+**Streaming**
+
+The agent already streams internally through `app.stream()`, but the HTTP endpoints wait for the full run before responding. Expose it via FastAPI's `StreamingResponse` with SSE and the UI can update node by node instead of all at once.
+
+**Auth**
+
+Session IDs are anonymous UUIDs right now. Add JWT or OAuth, tie them to user accounts, and booking history carries across sessions and devices.
+
+**More nodes**
+
+The graph has three nodes. Natural extensions: a price-alert node that re-triggers search when fares drop, a multi-city planner that chains flights, or parallel nodes that search multiple providers and compare results.
+
+happy coding 🚀
