@@ -29,10 +29,11 @@ class Settings(BaseSettings):
         return self
 
 def configure_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
-    )
+    from pythonjsonlogger.json import JsonFormatter
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logging.root.setLevel(getattr(logging, level.upper(), logging.INFO))
+    logging.root.addHandler(handler)
 
 settings = Settings()
 configure_logging(settings.log_level)

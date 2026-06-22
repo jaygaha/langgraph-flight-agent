@@ -1,6 +1,9 @@
 import logging
 from src.graph import app
 from src.config import settings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
